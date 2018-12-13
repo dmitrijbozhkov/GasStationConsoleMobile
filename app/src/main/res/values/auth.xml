@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sign_key">FdFYFzERwC2uCBB46pZQi4GG85LujR8obt-KWRBICVQ</string>
+    <string name="authorities_key">scopes</string>
+    <string name="token_prefix">Bearer</string>
+    <string name="token_header">Authorization</string>
+    <string name="admin_authority">ROLE_ADMIN</string>
+</resources>
