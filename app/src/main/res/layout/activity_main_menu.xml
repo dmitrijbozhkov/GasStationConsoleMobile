@@ -2,12 +2,13 @@
 <android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/activity_main_menu"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainMenu">
 
     <Button
-        android:id="@+id/view_volume_of_sales_buttn"
+        android:id="@+id/view_volume_of_sales_button"
         style="@style/Widget.AppCompat.Button"
         android:layout_width="368dp"
         android:layout_height="54dp"

@@ -48,7 +48,7 @@ public class AuthenticationManager {
     private String token;
     @Getter
     private boolean isAuthorized;
-    // Mapper
+    // Http
     private final ObjectMapper map = new ObjectMapper();
     private final OkHttpClient client = new OkHttpClient();
     // Subscriptions
@@ -58,17 +58,13 @@ public class AuthenticationManager {
         Claims claims = Jwts
                 .parser()
                 .setSigningKey(signKey.getBytes())
-                .deserializeJsonWith(new Deserializer<Map<String, ?>>() {
-            @Override
-            public Map<String, ?> deserialize(byte[] bytes) throws DeserializationException {
-                try {
-                    return map.readValue(bytes, new TypeReference<Map<String, ?>>() {});
-                } catch (Exception ex) {
-                    throw new DeserializationException(ex.getMessage());
-                }
-
-            }
-        }).parseClaimsJws(authToken.getToken())
+                .deserializeJsonWith((bytes) -> {
+                    try {
+                        return map.readValue(bytes, new TypeReference<Map<String, ?>>() {});
+                    } catch (Exception ex) {
+                        throw new DeserializationException(ex.getMessage());
+                    }
+                }).parseClaimsJws(authToken.getToken())
                 .getBody();
         if (!claims.get(authoritiesKey).equals(adminRole)) {
             return new AuthorizationResponse(false, authToken.getToken(), "Please login into your admin account");
@@ -86,6 +82,16 @@ public class AuthenticationManager {
         throw new Exception(map.readValue(response.body().string(), ExceptionResponse.class).getExceptionMessage());
     }
 
+    private void onAuthSuccess(AuthorizationResponse response) {
+        if (response.isAuthorized()) {
+            token = response.getToken();
+            isAuthorized = response.isAuthorized();
+        } else {
+            token = null;
+            isAuthorized = response.isAuthorized();
+        }
+    }
+
     public ConnectableObservable<AuthorizationResponse> authorize(String username, String password) {
         Observable<Response> response = Observable.defer(() -> {
             RequestBody requestBody = RequestBody.create(MediaType.parse(requestsType), map.writeValueAsString(new UserCredentials(username, password)));
@@ -101,7 +107,7 @@ public class AuthenticationManager {
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribeOn(Schedulers.io())
                 .publish();
-        authResponse.subscribe(new LoginRequestObserver());
+        Disposable subscribe = authResponse.subscribe(this::onAuthSuccess);
         return authResponse;
     }
 
@@ -112,32 +118,5 @@ public class AuthenticationManager {
 
     public String getPrefixedToken() {
         return String.format("%s %s", tokenPrefix, token);
-    }
-
-    private class LoginRequestObserver implements Observer<AuthorizationResponse> {
-
-        @Override
-        public void onSubscribe(Disposable d) {
-            authRequestDisposable = d;
-        }
-
-        @Override
-        public void onNext(AuthorizationResponse r) {
-            if (r.isAuthorized()) {
-                token = r.getToken();
-                isAuthorized = r.isAuthorized();
-            } else {
-                token = null;
-                isAuthorized = r.isAuthorized();
-            }
-        }
-
-        @Override
-        public void onError(Throwable e) { }
-
-        @Override
-        public void onComplete() {
-            authRequestDisposable.dispose();
-        }
     }
 }

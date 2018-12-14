@@ -2,16 +2,19 @@ package gas_station_console_mobile.nure.org.gasstationconsolemobile.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import lombok.AllArgsConstructor;
+import java.util.List;
+
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
-public class FuelStorageDetails {
-    @JsonProperty("id")
-    private long id;
-    @JsonProperty("fuelAmount")
-    private float fuelAmount;
+public class ListDTO<T> {
+
+    public ListDTO(List<T> content) {
+        this.content = content;
+    }
+
+    @JsonProperty("content")
+    private List<T> content;
 }

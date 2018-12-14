@@ -42,14 +42,18 @@ import io.reactivex.observables.ConnectableObservable;
  */
 public class LoginActivity extends AppCompatActivity {
 
+    private AuthenticationManager authenticationManager;
+    private Notifications notifications;
+
     // UI references.
     private AutoCompleteTextView mUsernameView;
     private EditText mPasswordView;
     private View mProgressView;
     private View mLoginFormView;
     private Button loginButton;
-    private AuthenticationManager authenticationManager;
-    private Notifications notifications;
+
+    // Subscriptions
+    private Disposable loginClickSubscription;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,22 +64,11 @@ public class LoginActivity extends AppCompatActivity {
         mUsernameView = (AutoCompleteTextView) findViewById(R.id.username);
         mPasswordView = (EditText) findViewById(R.id.password);
         loginButton = (Button) findViewById(R.id.sign_in_button);
-        ObservableOnSubscribe<View> loginAction = new ObservableOnSubscribe<View>() {
-            @Override
-            public void subscribe(final ObservableEmitter<View> emitter) throws Exception {
-                loginButton.setOnClickListener(new OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        emitter.onNext(view);
-                    }
-                });
-            }
-        };
-        Observable
-                .create(loginAction)
-                .subscribe(new LoginClickObserver());
         mLoginFormView = findViewById(R.id.login_form);
         mProgressView = findViewById(R.id.login_progress);
+        // Listen to login button clicks
+        Observable<View> loginAction = Observable.create((emitter) -> loginButton.setOnClickListener(emitter::onNext));
+        loginClickSubscription = loginAction.subscribe(this::attemptLogin);
     }
 
     @Override
@@ -90,13 +83,6 @@ public class LoginActivity extends AppCompatActivity {
         loginClickSubscription.dispose();
     }
 
-
-
-    /**
-     * Attempts to sign in or register the account specified by the login form.
-     * If there are form errors (invalid email, missing fields, etc.), the
-     * errors are presented and no actual login attempt is made.
-     */
     private void attemptLogin(View view) {
         // Reset errors.
         mUsernameView.setError(null);
@@ -120,8 +106,22 @@ public class LoginActivity extends AppCompatActivity {
         }
         showProgress(true);
         ConnectableObservable<AuthorizationResponse> auth = authenticationManager.authorize(username, password);
-        auth.subscribe(new LoginObserver());
+        Disposable subscribe = auth.subscribe(this::onAuthSuccess, this::onAuthorizationError);
         auth.connect();
+    }
+
+    private void onAuthSuccess(AuthorizationResponse response) {
+        showProgress(false);
+        mUsernameView.setText("");
+        mPasswordView.setText("");
+        Intent intent = new Intent(getBaseContext(), MainMenu.class);
+        intent.putExtra("responseMessage", response.getMessage());
+        startActivity(intent);
+    }
+
+    private void onAuthorizationError(Throwable error) {
+        showProgress(false);
+        notifications.showSnackbar(mLoginFormView, error.getMessage(), (ContextCompat.getColor(getApplicationContext(), R.color.colorDanger)));
     }
 
     /**
@@ -154,55 +154,6 @@ public class LoginActivity extends AppCompatActivity {
         } else {
             mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
             mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
-        }
-    }
-
-    // Subscriptions
-    private Disposable loginSubscription;
-    private Disposable loginClickSubscription;
-
-    private class LoginClickObserver implements Observer<View> {
-
-        @Override
-        public void onSubscribe(Disposable d) {
-            loginClickSubscription = d;
-        }
-
-        @Override
-        public void onNext(View view) {
-            attemptLogin(view);
-        }
-
-        @Override
-        public void onError(Throwable e) { }
-
-        @Override
-        public void onComplete() { }
-    }
-
-    private class LoginObserver implements Observer<AuthorizationResponse> {
-
-        @Override
-        public void onSubscribe(Disposable d) {
-            loginSubscription = d;
-        }
-
-        @Override
-        public void onNext(AuthorizationResponse response) {
-            showProgress(false);
-            notifications.showSnackbar(mLoginFormView, response.getMessage(), (ContextCompat.getColor(getApplicationContext(), R.color.colorSuccess)));
-            startActivity(new Intent(getBaseContext(), MainMenu.class));
-        }
-
-        @Override
-        public void onError(Throwable e) {
-            showProgress(false);
-            notifications.showSnackbar(mLoginFormView, e.getMessage(), (ContextCompat.getColor(getApplicationContext(), R.color.colorDanger)));
-        }
-
-        @Override
-        public void onComplete() {
-            loginSubscription.dispose();
         }
     }
 }

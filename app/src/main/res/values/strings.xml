@@ -10,4 +10,5 @@
     <string name="login_error">Login error</string>
     <string name="api_domain">http://10.0.2.2:8080/api</string>
     <string name="requests_type">application/json; charset=utf-8</string>
+    <string name="wrong_date_format_error">Please enter date in format dd.mm.yyyy</string>
 </resources>
